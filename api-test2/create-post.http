@@ -1,0 +1,9 @@
+POST http://localhost:8080/v1/posts
+Content-Type: application/json
+Connection: keep-alive
+
+{
+    "title": "New Post",
+    "content": "Hey guys",
+    "tags": ["tag1"]
+}

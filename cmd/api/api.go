@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -8,6 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sikozonpc/social/internal/store"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type application struct {
@@ -16,9 +19,10 @@ type application struct {
 }
 
 type config struct {
-	addr string
-	db   dbConfig
-	env  string
+	addr   string
+	db     dbConfig
+	env    string
+	apiURL string
 }
 
 type dbConfig struct {
@@ -29,6 +33,7 @@ type dbConfig struct {
 }
 
 func (app *application) mount() http.Handler {
+	fmt.Println("***A")
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -40,19 +45,50 @@ func (app *application) mount() http.Handler {
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
 	r.Use(middleware.Timeout(60 * time.Second))
-
+	fmt.Println("***B")
 	r.Route("/v1", func(r chi.Router) {
+		fmt.Println("***C")
 		r.Get("/health", app.healthCheckHandler)
 
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
+		fmt.Println("***E")
 		r.Route("/posts", func(r chi.Router) {
 			r.Post("/", app.createPostHandler)
+
+			r.Route("/{postID}", func(r chi.Router) {
+				r.Use(app.postsContextMiddleware)
+
+				r.Get("/", app.getPostHandler)
+				r.Delete("/", app.deletePostHandler)
+				r.Patch("/", app.updatePostHandler)
+			})
 		})
+
+		r.Route("/users", func(r chi.Router) {
+			r.Route("/{userID}", func(r chi.Router) {
+				r.Use(app.userContextMiddleware)
+
+				r.Get("/", app.getUserHandler)
+				r.Put("/follow", app.followUserHandler)
+				r.Put("/unfollow", app.unfollowUserHandler)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Get("/feed", app.getUserFeedHandler)
+			})
+		})
+
 	})
 
 	return r
 }
 
 func (app *application) run(mux http.Handler) error {
+	// Docs
+	//docs.SwaggerInfo.Version = version
+	//docs.SwaggerInfo.Host = app.config.apiURL
+	//docs.SwaggerInfo.BasePath = "/v1"
 
 	srv := &http.Server{
 		Addr:         app.config.addr,
