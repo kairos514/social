@@ -9,8 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sikozonpc/social/internal/store"
-
-	httpSwagger "github.com/swaggo/http-swagger/v2"
+	//httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type application struct {
@@ -50,18 +49,22 @@ func (app *application) mount() http.Handler {
 		fmt.Println("***C")
 		r.Get("/health", app.healthCheckHandler)
 
-		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
-		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
-		fmt.Println("***E")
+		//docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		//r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
+		fmt.Println("***D")
 		r.Route("/posts", func(r chi.Router) {
 			r.Post("/", app.createPostHandler)
-
+			fmt.Println("***E")
 			r.Route("/{postID}", func(r chi.Router) {
-				r.Use(app.postsContextMiddleware)
+				fmt.Println("***F")
+				//r.Use(app.postsContextMiddleware)
 
 				r.Get("/", app.getPostHandler)
+				fmt.Println("***G")
 				r.Delete("/", app.deletePostHandler)
+				fmt.Println("***H")
 				r.Patch("/", app.updatePostHandler)
+				fmt.Println("***I")
 			})
 		})
 
@@ -80,7 +83,7 @@ func (app *application) mount() http.Handler {
 		})
 
 	})
-
+	fmt.Println("ASD")
 	return r
 }
 

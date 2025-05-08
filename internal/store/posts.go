@@ -117,6 +117,7 @@ func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 		FROM posts
 		WHERE id = $1
 	`
+
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 

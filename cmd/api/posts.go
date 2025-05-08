@@ -56,23 +56,55 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
-	post := getPostFromCtx(r)
+	// fmt.Println("---get post handler")
+	// post := getPostFromCtx(r)
+	// fmt.Println("---get post handler", post)
+	// comments, err := app.store.Comments.GetByPostID(r.Context(), post.ID)
+	// if err != nil {
+	// 	app.internalServerError(w, r, err)
+	// 	return
+	// }
 
-	comments, err := app.store.Comments.GetByPostID(r.Context(), post.ID)
+	// post.Comments = comments
+
+	// if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
+	// 	app.internalServerError(w, r, err)
+	// 	return
+	// }
+	fmt.Println("---get post handler")
+	idParam := chi.URLParam(r, "postID")
+	fmt.Println("---a")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	fmt.Println("---b")
 	if err != nil {
-		app.internalServerError(w, r, err)
+		fmt.Println("---c")
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		fmt.Println("---d")
+		return
+	}
+	fmt.Println("---before reading context")
+	ctx := r.Context()
+	fmt.Println("---after reading context")
+	post, err := app.store.Posts.GetByID(ctx, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			writeJSONError(w, http.StatusNotFound, err.Error())
+		default:
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
-	post.Comments = comments
-
-	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
-		app.internalServerError(w, r, err)
+	if err := writeJSON(w, http.StatusCreated, post); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	fmt.Println("---END get post handler")
 }
 
 func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("--delete post handler")
 	idParam := chi.URLParam(r, "postID")
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
@@ -133,14 +165,18 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
+	fmt.Println("--postsContextMiddleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		idParam := chi.URLParam(r, "postID")
+		fmt.Println("--adAD")
 		id, err := strconv.ParseInt(idParam, 10, 64)
+		fmt.Println("--BABAB")
 		if err != nil {
+			fmt.Println("--internal server error")
 			app.internalServerError(w, r, err)
 			return
 		}
-
+		fmt.Println("--after error")
 		ctx := r.Context()
 
 		post, err := app.store.Posts.GetByID(ctx, id)
@@ -160,6 +196,7 @@ func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
 }
 
 func getPostFromCtx(r *http.Request) *store.Post {
-	post, _ := r.Context().Value("post").(*store.Post)
+	fmt.Println("--get post")
+	post, _ := r.Context().Value(postCtx).(*store.Post)
 	return post
 }
