@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 type Comment struct {
@@ -19,6 +20,7 @@ type CommentStore struct {
 }
 
 func (s *CommentStore) GetByPostID(ctx context.Context, postID int64) ([]Comment, error) {
+	fmt.Println("---Comments store")
 	query := `
 		SELECT c.id, c.post_id, c.user_id, c.content, c.created_at, users.username, users.id FROM comments c
 		JOIN users on users.id = c.user_id

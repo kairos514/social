@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/sikozonpc/social/internal/store"
 )
 
@@ -34,12 +34,13 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	user := getUserFromContext(r)
+
 	post := &store.Post{
 		Title:   payload.Title,
 		Content: payload.Content,
 		Tags:    payload.Tags,
-		// TODO: Change after auth
-		UserID: 202,
+		UserID:  user.ID,
 	}
 
 	ctx := r.Context()
@@ -56,35 +57,18 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
-	// fmt.Println("---get post handler")
-	// post := getPostFromCtx(r)
-	// fmt.Println("---get post handler", post)
-	// comments, err := app.store.Comments.GetByPostID(r.Context(), post.ID)
-	// if err != nil {
-	// 	app.internalServerError(w, r, err)
-	// 	return
-	// }
-
-	// post.Comments = comments
-
-	// if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
-	// 	app.internalServerError(w, r, err)
-	// 	return
-	// }
-	fmt.Println("---get post handler")
+	/**fmt.Println("---getPostHandler")
 	idParam := chi.URLParam(r, "postID")
-	fmt.Println("---a")
+	fmt.Println("---getPostHandler A:", idParam)
 	id, err := strconv.ParseInt(idParam, 10, 64)
-	fmt.Println("---b")
+	fmt.Println("---getPostHandler B")
 	if err != nil {
-		fmt.Println("---c")
+		fmt.Println("---getPostHandler C")
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
-		fmt.Println("---d")
+		fmt.Println("---getPostHandler D")
 		return
 	}
-	fmt.Println("---before reading context")
 	ctx := r.Context()
-	fmt.Println("---after reading context")
 	post, err := app.store.Posts.GetByID(ctx, id)
 	if err != nil {
 		switch {
@@ -99,10 +83,40 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 	if err := writeJSON(w, http.StatusCreated, post); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, err.Error())
 		return
+	}**/
+	fmt.Println("---get post handler")
+	post := getPostFromCtx(r)
+	fmt.Println("---get post handler Back", post)
+	comments, err := app.store.Comments.GetByPostID(r.Context(), post.ID)
+
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
 	}
+
+	post.Comments = comments
+
+	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
 	fmt.Println("---END get post handler")
 }
 
+// DeletePost godoc
+//
+//	@Summary		Deletes a post
+//	@Description	Delete a post by ID
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Post ID"
+//	@Success		204	{object}	string
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/posts/{id} [delete]
 func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("--delete post handler")
 	idParam := chi.URLParam(r, "postID")
@@ -132,7 +146,23 @@ type UpdatePostPayload struct {
 	Content *string `json:"content" validate:"omitempty,max=1000"`
 }
 
+// UpdatePost godoc
+//
+//	@Summary		Updates a post
+//	@Description	Update a post by ID
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Post ID"
+//	@Success		200	{object}	store.Post
+//	@Failure		400	{object}	error
+//	@Failure		401	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/posts/{id} [patch]
 func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Update Post")
 	post := getPostFromCtx(r)
 
 	var payload UpdatePostPayload
@@ -197,6 +227,8 @@ func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
 
 func getPostFromCtx(r *http.Request) *store.Post {
 	fmt.Println("--get post")
+	fmt.Println(r.Context().Value(postCtx))
 	post, _ := r.Context().Value(postCtx).(*store.Post)
+	fmt.Println("--get post A", post)
 	return post
 }
